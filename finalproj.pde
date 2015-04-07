@@ -50,12 +50,16 @@ void setup() {
   
   minim = new Minim(this) ;
   musicPlayer = minim.loadFile("chopin.mp3");
-  fuelAlarm = minim.loadFile("School_Fire_Alarm-Cullen_Card-202875844.mp3");
-  proxAlarm = minim.loadFile("Industrial Alarm-SoundBible.com-1012301296.mp3");
+  fuelAlarm = minim.loadFile("School_Fire_Alarm-Cullen_Card-202875844.wav");
+  
+  proxAlarm = minim.loadFile("Industrial Alarm-SoundBible.com-1012301296.wav");
+  
   crashAlarm = minim.loadFile("Explosion_Ultra_Bass-Mark_DiAngelo-1810420658.mp3");
+  
   proxAlarm.setLoopPoints(100,2000);
   
   goodSound = minim.loadFile("267528__syseq__good.wav");
+  
 
   planeIcon = loadImage("airplane_mode_on.png");
   
@@ -73,7 +77,7 @@ void draw() {
   
   
   float old_t = t;
-  float delta_t = 10/frameRate;
+  float delta_t = 1/frameRate;
   t += delta_t;
   
   if (currentScreen == SCREEN_MAIN) {
@@ -321,6 +325,7 @@ class Airplane {
         PVector difference = PVector.sub(randomPosition(dest), r);
         difference.y = -difference.y;
         theta = thetaFromVector(difference);
+        targetTheta = theta;
     }
     
     fuel = max(fuel-delta_t, 0);
@@ -419,12 +424,12 @@ class MainScreen {
     text(
     "The following are CC-by-SA (https://creativecommons.org/licenses/by/3.0/us/)\n"
     +"Airplane icon by VisualPharm. Colors were inverted.\n"
-    +"Industrial Alarm sound by Mike Koenig. No changes.\n"
-    +"School Fire Alarm sound by Cullen Card. No changes.\n"
-    +"Explosion Ultra Bass sound by Mark DiAngelo. No changes\n"
+    +"Industrial Alarm sound by Mike Koenig. Trimmed and volume changed.\n"
+    +"School Fire Alarm sound by Cullen Card. Trimmed and volume changed.\n"
+    +"Explosion Ultra Bass sound by Mark DiAngelo. Volume changed.\n"
     +"\n"
     +"The following is CC-0:\n"
-    +"Good! sound by syseQ\n"
+    +"Good! sound by syseQ. Volume changed.\n"
     
     , width/2, height*.5);
     
@@ -540,6 +545,7 @@ class Game {
     
     float avgTime = MUSIC_LENGTH/numPlanes;
     times[0] = 0;
+    
     for (int i = 0; i < numPlanes; i++) {
       PVector start = randomPosition((i % 8));
       
@@ -564,6 +570,10 @@ class Game {
   
   void tick(float t, float delta_t) {
     resetDrawState();
+    
+    if (MUSIC_LENGTH - t <= 0) {
+      over = true; // Won!
+    }
     
     fill(0x33);
     textAlign(CENTER, CENTER);
@@ -659,7 +669,7 @@ class Game {
         }
       }
       
-      if (i <= indexOfLastPlane && planes[i].haveNotReachedDestination) {
+      if (times[i] <= t && planes[i].haveNotReachedDestination) {
         planes[i].tick(t, delta_t);
       }
     }
@@ -681,14 +691,20 @@ class Game {
         ellipse(planeThatRanOut.r.x, planeThatRanOut.r.y, 100, 100);
       }
       
-      if (crash1 != -1 && crash2 != -1) {
+      else if (crash1 != -1 && crash2 != -1) {
         text("MID-AIR COLLISION", width*.5, height*.5);
         ellipse(planes[crash1].r.x, planes[crash1].r.y, 80, 80);
+      }
+      
+      else {
+        text("YOU WON!", width*.5, height*.5);
       }
       
       text("Press (Esc) to return to menu.", width*.5, height*.6);
       
     }
+    
+    
 
   }
   
@@ -747,12 +763,15 @@ class Game {
     boolean isFuelAlarm = false;
     int crash1 = -1;
     int crash2 = -1;
-    
-    for (int i = 0; i < indexOfLastPlane; i++) {
+    boolean atLeastOneAlive = false;
+    for (int i = 0; i <= indexOfLastPlane; i++) {
+      if (planes[i].haveNotReachedDestination) {
+        atLeastOneAlive = true;
+      }
       if (planes[i].fuel < FUEL_ALARM_SECS) {
         isFuelAlarm = true;
       }
-      for (int j = 0; j < indexOfLastPlane; j++) {
+      for (int j = 0; j <= indexOfLastPlane; j++) {
         if (i == j) {
           continue;
         }
@@ -804,8 +823,12 @@ class Game {
       }
     }
     else {
-      proxAlarm.pause();
+      proxAlarm.pause(); 
+      if(!atLeastOneAlive) {
+        over = true;
+      }
     }
+    
   }
 }
 
