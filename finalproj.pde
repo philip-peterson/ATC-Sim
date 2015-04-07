@@ -74,6 +74,9 @@ void mouseMoved() {
   else if (currentScreen == SCREEN_INST) {
     screen_i.mouse(mouseX, mouseY);
   }
+  else if (currentScreen == SCREEN_PLAY) {
+    g.moved(mouseX, mouseY);
+  }
 }
 
 void keyPressed() {
@@ -108,6 +111,18 @@ void mouseClicked() {
   
 }
 
+void mousePressed() {
+  if (currentScreen == SCREEN_PLAY) {
+    g.pressed(mouseX, mouseY);
+  }
+}
+
+void mouseReleased() {
+  if (currentScreen == SCREEN_PLAY) {
+    g.released(mouseX, mouseY);
+  }
+}
+
 void resetDrawState() {
   textSize(20);
   textAlign(LEFT, TOP);
@@ -115,23 +130,82 @@ void resetDrawState() {
   stroke(0);
   fill(255);
   rectMode(CORNERS);
+  imageMode(CENTER);
 }
 
 class Airplane {
-  PVector v;
+  float theta;
   PVector r;
+  final float SPEED = 20.0;
+  float fuel;
+  float maxFuel;
   
   AudioPlayer fuelAlarm = minim.loadFile("School_Fire_Alarm-Cullen_Card-202875844.mp3");
   AudioPlayer proxAlarm = minim.loadFile("Industrial Alarm-SoundBible.com-1012301296.mp3");
   
-  public Airplane() {
-    v = new PVector(0, 0);
-    r = new PVector(width/4, height/4);
+  public Airplane(float safety) {
+    maxFuel = max(width, height)*sqrt(2)/SPEED;
+    fuel = maxFuel*safety;
+    maxFuel *= 2; /* How much is "full" fuel? */
+    
+    theta = 0;
+    r = new PVector(width*random(1), height*random(1));
+  }
+  
+  color getFuelColor() {
+    float pct = fuel/maxFuel;
+    if (pct < .5) {
+      return #FF0000;
+    }
+    else if (pct > .75) {
+      return #00FF00;
+    }
+    return #FFFF00;
   }
   
   void draw(float t, float delta_t) {
     resetDrawState();
-    rect(r.x-20, r.y-50, r.x+20, r.y-1);
+    pushMatrix();
+      translate(round(r.x), round(r.y));
+      pushMatrix();
+        scale(.2);
+        rotate(-theta);
+        if (fuel/maxFuel < .3) {
+          tint(lerpColor(#FF0000, #00FFFF, sin(t*30)));
+        }
+        else {
+          tint(#FFFFFF);
+        }
+        image(planeIcon, 0,0);
+        tint(#FFFFFF);
+      popMatrix();
+      
+      
+      /* Draw fuel gauge */
+      translate(0, 30);
+      stroke(0x88);
+      strokeWeight(1);
+      fill(0);
+      rectMode(CORNERS);
+      rect(-20,-3,20,3);
+      noStroke();
+      fill(getFuelColor());
+      rect(-20,-3,lerp(-20, 20, fuel/maxFuel),3);
+      textAlign(LEFT, CENTER);
+      textSize(9);
+      text(floor(fuel)+"s", 30, 0);
+      
+      /* Draw destination */
+      
+      text("Dest: SE", -20, 10);
+      
+      
+    popMatrix();
+    
+    theta += delta_t/2;
+    r.add(new PVector(SPEED*cos(theta)*delta_t, -SPEED*sin(theta)*delta_t));
+    
+    fuel = max(fuel-delta_t, 0);
   }
   
 }
@@ -315,12 +389,131 @@ class InstructionScreen {
 class Game {
   int diff;
   Airplane planes[];
+  float times[];
+  
   Game(int diff) {
     this.diff = diff;
-  }
-  void draw(float t, float delta_t) {
-    for (int i = 0; i < planes.length; i++ ) {
-      planes[i].draw();
+    int numPlanes = (diff+1)*20;
+    planes = new Airplane[numPlanes];
+    times = new float[numPlanes];
+    for (int i = 0; i < numPlanes; i++) {
+      planes[i] = new Airplane(2.0);
+      times[i] = random(0, 201.5);
     }
+  }
+  
+  void draw(float t, float delta_t) {
+    resetDrawState();
+    
+ 
+    // Draw corner zones
+    final float THICKNESS = 40;
+    
+    fill(color(0x33, 0x33, 0x33, 0x88));
+    stroke(0xFF);
+    strokeWeight(1.0);
+    beginShape();
+    
+    
+    /* NW */
+    vertex(0,0);
+    vertex(width/4, 0);
+    vertex(width/4, THICKNESS);
+    vertex(THICKNESS, height/4);
+    vertex(0, height/4);
+    endShape(CLOSE);
+    
+    /* SW */
+    beginShape();
+    vertex(0, height);
+    vertex(width/4, height);
+    vertex(width/4, height-THICKNESS);
+    vertex(THICKNESS, height-height/4);
+    vertex(0, height-height/4);
+    endShape(CLOSE);
+    
+    /* SE */
+    beginShape();
+    vertex(width, height);
+    vertex(width, height-height/4);
+    vertex(width-THICKNESS, height-height/4);
+    vertex(width-width/4, height-THICKNESS);
+    vertex(width-width/4, height);
+    endShape(CLOSE);
+    
+    /* NE */
+    beginShape();
+    vertex(width, 0);
+    vertex(width-width/4, 0);
+    vertex(width-width/4, THICKNESS);
+    vertex(width-THICKNESS, height/4);
+    vertex(width, height/4);
+    endShape(CLOSE);
+    
+    /* Draw sides */
+    rectMode(CORNERS);
+    
+    rect(0, height/4, THICKNESS, height-height/4); // W
+    
+    rect(width-THICKNESS, height/4, width, height-height/4); // E
+    
+    rect(width/4, height-THICKNESS, width-width/4, height); // S
+
+    rect(width/4, 0, width-width/4, THICKNESS); // N
+
+    /* Draw labels */
+    textSize(13);
+    fill(0xFF);
+    textAlign(CENTER, CENTER);
+    text("N", width/2, THICKNESS/2);
+    text("S", width/2, height-THICKNESS/2);
+    text("W", THICKNESS/2, height/2);
+    text("E", width-THICKNESS/2, height/2);
+    
+    text("NW", width*.1, height*.1);
+    text("NE", width-width*.1, height*.1);
+    text("SW", width*.1, height-height*.1);
+    text("SE", width-width*.1, height-height*.1);
+    
+        // Draw planes
+    
+    for (int i = 0; i < planes.length; i++ ) {
+      planes[i].draw(t, delta_t);
+    }
+
+  }
+  
+  /*
+  Mouse Modes:
+  0 = normal, unclicked
+  1 = left clicked
+  */
+  int mouseMode = 0;
+  PVector m = new PVector(0,0);
+  int selectedPlane = -1;
+  
+  void released(float x, float y) {
+    if (selectedPlane != -1) {
+      // do some stuff
+    }
+    mouseMode = 0;
+    selectedPlane = -1;
+  }
+  
+  void pressed(float x, float y) {
+    for (int i = 0; i < planes.length; i++ ){
+      if (planes[i].overlap(x,y)) {
+        mouseMode = 1;
+        selectedPlane = i;
+        return;
+      }
+    }
+    selectedPlane = -1;
+    mouseMode = 0;
+  }
+  
+  void moved(float x, float y) {
+    m.x = x;
+    m.y = y;
   }
 }
