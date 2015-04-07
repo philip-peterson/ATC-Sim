@@ -7,10 +7,17 @@ import ddf.minim.* ;
 Minim minim;
 AudioPlayer musicPlayer;
 PImage planeIcon;
+AudioPlayer fuelAlarm;
+AudioPlayer proxAlarm;
+AudioPlayer crashAlarm;
+AudioPlayer goodSound;
 
 final float MUSIC_LENGTH = 201.5;
-final float FULL_FUEL = 2;
+final float FULL_FUEL = 2.5;
 final float WALL_THICKNESS = 40;
+final float DISTANCE_ALARM_DIST = 80;
+final float CRASH_DIST = 25;
+final float FUEL_ALARM_SECS = 15;
 
 MainScreen screen_m;
 InstructionScreen screen_i;
@@ -27,7 +34,7 @@ final int SCREEN_INST = 1;
 final int SCREEN_PLAY = 2;
 int currentScreen = SCREEN_MAIN;
 
-int difficulty = 0; /*  Difficulty selection. Copied into the Game object when it is constructed. */
+int difficulty = 1; /*  Difficulty selection. Copied into the Game object when it is constructed. */
 
 void setup() {
   size(900,900);
@@ -43,7 +50,12 @@ void setup() {
   
   minim = new Minim(this) ;
   musicPlayer = minim.loadFile("chopin.mp3");
+  fuelAlarm = minim.loadFile("School_Fire_Alarm-Cullen_Card-202875844.mp3");
+  proxAlarm = minim.loadFile("Industrial Alarm-SoundBible.com-1012301296.mp3");
+  crashAlarm = minim.loadFile("Explosion_Ultra_Bass-Mark_DiAngelo-1810420658.mp3");
+  proxAlarm.setLoopPoints(100,2000);
   
+  goodSound = minim.loadFile("267528__syseq__good.wav");
 
   planeIcon = loadImage("airplane_mode_on.png");
   
@@ -53,27 +65,30 @@ void setup() {
 
 
 float t = 0;
+float gameStartTime = 0;
 
 void draw() {
   resetDrawState();
   background(0);
   
   
-  
-  float delta_t = 1/frameRate;
+  float old_t = t;
+  float delta_t = 10/frameRate;
   t += delta_t;
   
   if (currentScreen == SCREEN_MAIN) {
-    screen_m.draw(t, delta_t);
+    screen_m.tick(t, delta_t);
   }
   else if (currentScreen == SCREEN_INST) {
-    screen_i.draw(t, delta_t);
+    screen_i.tick(t, delta_t);
   }
   else if (currentScreen == SCREEN_PLAY) {
-    g.draw(t, delta_t);
+    g.tick(t-gameStartTime, delta_t);
+    if (g.over) {
+      t = old_t;
+    }
   }
   
-  randomPosition(REGION_W);
 } 
 
 void mouseMoved() {
@@ -101,6 +116,17 @@ void keyPressed() {
       difficulty = min(27, difficulty+1);
     }
   }
+  if (currentScreen == SCREEN_PLAY) {
+    if (key == 27) {
+      key = 0;
+      currentScreen = SCREEN_MAIN;
+      g = null;
+      musicPlayer.pause();
+      proxAlarm.pause();
+      fuelAlarm.pause();
+      crashAlarm.pause();
+    }
+  }
 }
 
 void mouseClicked() {
@@ -110,6 +136,7 @@ void mouseClicked() {
       currentScreen = SCREEN_INST; // Go to instructions
     }
     if (res == 2) {
+      gameStartTime = t;
       g = new Game(difficulty);
       musicPlayer.play(12500);
       currentScreen = SCREEN_PLAY; // Go to difficulty selection
@@ -154,15 +181,15 @@ class Airplane {
   float fuel;
   float maxFuel;
   int dest;
+  int source;
+  boolean haveNotReachedDestination = true;
   
-  AudioPlayer fuelAlarm = minim.loadFile("School_Fire_Alarm-Cullen_Card-202875844.mp3");
-  AudioPlayer proxAlarm = minim.loadFile("Industrial Alarm-SoundBible.com-1012301296.mp3");
-  
-  public Airplane(float x, float y, float theta, int dest, float safety) {
+  public Airplane(float x, float y, float theta, int source, int dest, float safety) {
     maxFuel = max(width, height)*.5*sqrt(2)/SPEED;
     fuel = maxFuel*safety;
     maxFuel *= FULL_FUEL;
     
+    this.source = source;
     this.dest = dest;
     this.theta = theta;
     targetTheta = theta;
@@ -186,8 +213,9 @@ class Airplane {
     return #FFFF00;
   }
   
-  void draw(float t, float delta_t) {
+  void tick(float t, float delta_t) {
     resetDrawState();
+    
     pushMatrix();
       translate(round(r.x), round(r.y));
       pushMatrix();
@@ -232,6 +260,10 @@ class Airplane {
     popMatrix();
     
     
+    if (g.over) {
+      return;
+    }
+    
     /* Draw drag widget if necessary */
     if (g.isPlaneSelected(this)) {
       strokeWeight(3);
@@ -239,19 +271,66 @@ class Airplane {
       line(g.m.x, g.m.y, r.x, r.y);
     }
     
-    float TURN_SPEED = .1;
+    float TURN_SPEED = .4;
     
-    if (targetTheta > theta) {
-      theta = min(theta + delta_t*TURN_SPEED, targetTheta);
+    float deltaTheta = angularDiff(targetTheta, theta);
+    
+    
+    if (deltaTheta > 0) {
+      theta = theta + delta_t*TURN_SPEED;
     }
     else {
-      theta = max(theta - delta_t*TURN_SPEED, targetTheta);
+      theta = theta - delta_t*TURN_SPEED;
+    }
+    
+    theta = theta + 2*PI;
+    theta = theta % (2*PI);
+    
+    if (abs(angularDiff(targetTheta, theta)) < delta_t*TURN_SPEED) {
+      theta = targetTheta;
     }
     
     
     r.add(new PVector(SPEED*cos(theta)*delta_t, -SPEED*sin(theta)*delta_t));
     
+    int region = getRegionFromPoint(r);
+    boolean warpToStart = false;
+    if (region != -1) {
+      
+      if (region == dest) {
+        // This plane is no longer "alive" (has succeeded in its journey)
+        this.haveNotReachedDestination = false;
+        goodSound.play(0);
+        return;
+      }
+      else if (region == source) {
+        // If region is the source, ignore unless the plane is off the screen
+        if (r.x < 0 || r.x > width || r.y < 0 || r.y > height) {
+          warpToStart = true;
+        }
+      }
+      else {
+        // If the plane is in a strange region, re-spawn from source,
+        // directing toward destination
+        warpToStart = true;
+      }
+    }
+    
+    if (warpToStart) {
+        r = randomPosition(source);
+        PVector difference = PVector.sub(randomPosition(dest), r);
+        difference.y = -difference.y;
+        theta = thetaFromVector(difference);
+    }
+    
     fuel = max(fuel-delta_t, 0);
+    
+    if (fuel <= 0) {
+      g.over = true;
+      g.planeThatRanOut = this;
+      proxAlarm.pause();
+      musicPlayer.pause();
+    }
   }
   
 }
@@ -304,7 +383,7 @@ class MainScreen {
     return -1;
   }
   
-  void draw(float t, float delta_t) {
+  void tick(float t, float delta_t) {
     resetDrawState();
     color(0xFF);
     noStroke();
@@ -338,10 +417,14 @@ class MainScreen {
     
     textSize(10);
     text(
-    "The following are CC by SA (https://creativecommons.org/licenses/by/3.0/us/)\n"
+    "The following are CC-by-SA (https://creativecommons.org/licenses/by/3.0/us/)\n"
     +"Airplane icon by VisualPharm. Colors were inverted.\n"
-    +"Industrial Alarm Sound by Mike Koenig. No changes.\n"
-    +"School Fire Alarm Sound by Cullen Card. No changes."
+    +"Industrial Alarm sound by Mike Koenig. No changes.\n"
+    +"School Fire Alarm sound by Cullen Card. No changes.\n"
+    +"Explosion Ultra Bass sound by Mark DiAngelo. No changes\n"
+    +"\n"
+    +"The following is CC-0:\n"
+    +"Good! sound by syseQ\n"
     
     , width/2, height*.5);
     
@@ -394,7 +477,7 @@ class InstructionScreen {
     return -1;
   }
   
-  void draw(float t, float delta_t) {
+  void tick(float t, float delta_t) {
     resetDrawState();
     color(0xFF);
     noStroke();
@@ -402,15 +485,14 @@ class InstructionScreen {
     textAlign(LEFT, TOP);
     text(
     
-    "Click and drag an airplane to change its linear direction.\n\n\n\n"
+    "Each airplane has to make it to its destination before it runs out of fuel.\nThe goal is to get all the airplanes to their destination, or to have the time run out\n"
+    +"without crashing.\n\n\n"
     
-    +"Right-click and drag an airplane to make it go in circles.\n\n\n\n"
+    +"Click and drag an airplane to change its heading.\nNote that this takes time because of inertia.\nWhen an airplane is turning, it will pulsate in brightness to indicate this.\n\n\n"
     
-    +"Each airplane has to make it to its destination before it runs out of fuel.\n\n\n\n"
+    +"If an airplane goes off the radar in the wrong direction, it will get warped back to the start, costing you fuel.\n\n\n\n"
     
-    +"Be sure to take into account the amount of time it takes a plane to turn.\n\n\n\n"
-    
-    +"If an airplane goes off the radar in the wrong direction, it will reverse its\n  direction, but it will lose a lot of fuel.\n\n\n\n"
+    +"You can stop the game by pressing (Esc).\n\n\n\n"
     
     +"All airplanes are at the same altitude. Don't let them crash!", 20.0, 20.0);
     
@@ -436,14 +518,23 @@ class InstructionScreen {
 
 class Game {
   int diff;
+  int crash1 = -1;
+  int crash2 = -1;
+  Airplane planeThatRanOut = null;
+  
   Airplane planes[];
   float times[];
+  boolean over = false;
   
   int indexOfLastPlane = 0;
   
-  Game(int diff) {
+  Game(int difficulty) {
     this.diff = diff;
-    int numPlanes = (diff+2)*20;
+    int numPlanes = (diff)*20;
+    if (numPlanes == 0) {
+      numPlanes = 10;
+    }
+    
     planes = new Airplane[numPlanes];
     times = new float[numPlanes];
     
@@ -459,16 +550,33 @@ class Game {
       difference.y = -difference.y;
       float theta = thetaFromVector(difference);
       
-      planes[i] = new Airplane(start.x, start.y, theta, endRegion, 1.8);
+      // From levels 0 to 5, gradually decrease safety margin.
+      float safety = lerp(2.5, 1.8, min(difficulty/5.0, 1.0));
+      planes[i] = new Airplane(start.x, start.y, theta, i%8, endRegion, safety);
       if (i > 0) {
         times[i] = times[i-1]+random(1, avgTime+1);
       }
     }
   }
   
-  void draw(float t, float delta_t) {
+  int ctr;
+  static final int TICKS_BETWEEN_ALARM_CHECKS = 10;
+  
+  void tick(float t, float delta_t) {
     resetDrawState();
     
+    fill(0x33);
+    textAlign(CENTER, CENTER);
+    textSize(40);
+    text("Time remaining: " + secsToTime(round(MUSIC_LENGTH - t)), width/2, height/2);
+    
+    if (!over) {
+      ctr++;
+      if (ctr == TICKS_BETWEEN_ALARM_CHECKS) {
+        ctr = 0;
+        checkAlarms();
+      }
+    }
  
     // Draw corner zones
     
@@ -541,14 +649,45 @@ class Game {
         // Draw planes
     
     for (int i = 0; i < planes.length; i++ ) {
-      if (i > indexOfLastPlane) {
-        if (times[i] <= t) {
-          indexOfLastPlane = i;
+      
+      if (!over) {
+        // Update indexOfLastPlane if necessary
+        if (i > indexOfLastPlane) {
+          if (times[i] <= t) {
+            indexOfLastPlane = i;
+          }
         }
       }
-      if (i <= indexOfLastPlane) {
-        planes[i].draw(t, delta_t);
+      
+      if (i <= indexOfLastPlane && planes[i].haveNotReachedDestination) {
+        planes[i].tick(t, delta_t);
       }
+    }
+    
+    if (over) {
+      textAlign(CENTER);
+      color(0xFF);
+      textSize(20);
+      text("GAME OVER", width*.5, height*.4);
+      
+      ellipseMode(CENTER);
+      strokeWeight(5);
+      stroke(#FFFF00);
+      noFill();
+      
+      // Display failure explanation
+      if (planeThatRanOut != null) {
+        text("RAN OUT OF FUEL", width*.5, height*.5);
+        ellipse(planeThatRanOut.r.x, planeThatRanOut.r.y, 100, 100);
+      }
+      
+      if (crash1 != -1 && crash2 != -1) {
+        text("MID-AIR COLLISION", width*.5, height*.5);
+        ellipse(planes[crash1].r.x, planes[crash1].r.y, 80, 80);
+      }
+      
+      text("Press (Esc) to return to menu.", width*.5, height*.6);
+      
     }
 
   }
@@ -600,6 +739,73 @@ class Game {
     if (selectedPlane == -1) 
       return false;
     return planes[selectedPlane] == p;    
+  }
+  
+  void checkAlarms() {
+    boolean isDistanceAlarm = false;
+    boolean isCrashAlarm = false;
+    boolean isFuelAlarm = false;
+    int crash1 = -1;
+    int crash2 = -1;
+    
+    for (int i = 0; i < indexOfLastPlane; i++) {
+      if (planes[i].fuel < FUEL_ALARM_SECS) {
+        isFuelAlarm = true;
+      }
+      for (int j = 0; j < indexOfLastPlane; j++) {
+        if (i == j) {
+          continue;
+        }
+        if (!planes[i].haveNotReachedDestination || !planes[j].haveNotReachedDestination) {
+          continue;
+        }
+        
+        float a = planes[i].r.x - planes[j].r.x;
+        float b = planes[i].r.y - planes[j].r.y;
+        float r = sqrt(a*a+b*b);
+        
+        if (r <= DISTANCE_ALARM_DIST)  {
+          isDistanceAlarm = true;
+          if (r <= CRASH_DIST) {
+            isCrashAlarm = true;
+            crash1 = i;
+            crash2 = j;
+          }
+        }
+      }
+      if (isCrashAlarm) {
+        break;
+      }
+    }
+    
+    if(isFuelAlarm) {
+      if (!fuelAlarm.isPlaying()) {
+        fuelAlarm.rewind();
+        fuelAlarm.play();
+      }
+    }
+    
+    if(isCrashAlarm) {
+      if (!crashAlarm.isPlaying()) {
+        crashAlarm.rewind();
+        crashAlarm.play();
+      }
+      musicPlayer.pause();
+      proxAlarm.pause();
+      g.over = true;
+      g.crash1 = crash1;
+      g.crash2 = crash2;
+    }
+    else if(isDistanceAlarm) {
+      
+      if (!proxAlarm.isPlaying()) {
+        proxAlarm.rewind();
+        proxAlarm.loop();
+      }
+    }
+    else {
+      proxAlarm.pause();
+    }
   }
 }
 
@@ -702,6 +908,8 @@ float thetaFromVector(PVector v) {
       theta += PI;
     }
   }
+  theta += 2*PI;
+  theta = theta % (2*PI);
   return theta;
 }
 
@@ -737,4 +945,65 @@ int getRandomEndRegion(int start_region) {
     possibles[i] = (possibles[i]+8) % 8;
   }
   return possibles[(int)(round(random(0,3)))];
+}
+
+int getRegionFromPoint(PVector p) {
+  if (p.x <= WALL_THICKNESS) {
+    if (p.y <= height/4) {
+      return REGION_NW;
+    }
+    if (p.y >= 3*height/4) {
+      return REGION_SW;
+    }
+    return REGION_W;
+  }
+  if (p.x >= width-WALL_THICKNESS) {
+    if (p.y <= height/4) {
+      return REGION_NE;
+    }
+    if (p.y >= 3*height/4) {
+      return REGION_SE;
+    }
+    return REGION_E;
+  }
+  if (p.y <= WALL_THICKNESS) {
+    if (p.x <= width/4) {
+      return REGION_NW;
+    }
+    if (p.x >= width*3/4) {
+      return REGION_NE;
+    }
+    return REGION_N;
+  }
+  if (p.y >= height-WALL_THICKNESS) {
+    if (p.x <= width/4) {
+      return REGION_SW;
+    }
+    if (p.x >= width*3/4) {
+      return REGION_SE;
+    }
+    return REGION_S;
+  }
+  return -1;
+}
+
+// Number of degrees to add to a to get b
+// assume a and b are in [0, 2pi)
+float angularDiff(float b, float a) {
+  if (abs(b-a) > PI) {
+    return 2*PI-(b-a);
+  }
+  return b-a;
+}
+
+String secsToTime(int secs) {
+  
+  secs = max(secs, 0);
+  String s = (secs/60)+":";
+  secs = secs % 60;
+  if (secs < 10) {
+    s += "0";
+  }
+  s += secs;
+  return s;
 }
