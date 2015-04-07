@@ -54,7 +54,7 @@ void setup() {
   
   proxAlarm = minim.loadFile("Industrial Alarm-SoundBible.com-1012301296.wav");
   
-  crashAlarm = minim.loadFile("Explosion_Ultra_Bass-Mark_DiAngelo-1810420658.mp3");
+  crashAlarm = minim.loadFile("Explosion_Ultra_Bass-Mark_DiAngelo-1810420658.wav");
   
   proxAlarm.setLoopPoints(100,2000);
   
@@ -177,6 +177,9 @@ void resetDrawState() {
   imageMode(CENTER);
 }
 
+/*
+Airplane class. Represents a single airplane across its life.
+*/
 class Airplane {
   float theta;
   float targetTheta;
@@ -188,6 +191,15 @@ class Airplane {
   int source;
   boolean haveNotReachedDestination = true;
   
+  /*
+     Constructor for Airplane.
+     x = initial x-position
+     y = initial y-position
+     theta = initial angle (CCW from right)
+     source = region number for the source (origin) of the plane
+     dest = region number for the destination of the plane
+     safety = the factor of safety (should be above 1.0) for the plane's fuel.
+  */
   public Airplane(float x, float y, float theta, int source, int dest, float safety) {
     maxFuel = max(width, height)*.5*sqrt(2)/SPEED;
     fuel = maxFuel*safety;
@@ -200,12 +212,18 @@ class Airplane {
     r = new PVector(x, y);
   }
   
+  /*
+     Return true if (x,y) is a valid click point for the plane.
+   */
   boolean overlap(float x, float y) {
     float a = x-r.x;
     float b = y-r.y;
     return sqrt(a*a+b*b) < 20;
   }
   
+  /*
+     Return a color for the fuel bar.
+   */
   color getFuelColor() {
     float pct = fuel/maxFuel;
     if (pct < .5) {
@@ -217,6 +235,16 @@ class Airplane {
     return #FFFF00;
   }
   
+  /*
+   Draws the plane and updates its state.
+   - Draws with flashing if low on fuel or turning.
+   - Draws fuel gauge
+   - Draw destination
+   - Draw drag widget for this plane if necessary
+   - Update theta to point toward targetTheta
+   - Warp plane to starting region if necessary
+   - Check if fuel is out, trigger endgame if so.
+  */
   void tick(float t, float delta_t) {
     resetDrawState();
     
@@ -340,6 +368,9 @@ class Airplane {
   
 }
 
+/* 
+Produces human-readable name for difficulty level.
+*/
 String diffToString(int diff) {
   if (diff == 0) { 
     return "Easy";
@@ -358,6 +389,9 @@ class MainScreen {
   Rectangle2D.Float bt1;
   Rectangle2D.Float bt2;
   
+  /*
+  Constructor for MainScreen.
+  */
   MainScreen() {
     float W = 150;
     float H = 50;
@@ -368,6 +402,9 @@ class MainScreen {
   boolean mo1 = false;
   boolean mo2 = false;
   
+  /*
+  Handles mouseover for instructions/play buttons
+  */
   void mouse(float x, float y) {
     mo1 = mo2 = false;
     if (bt1.contains(x,y)) {
@@ -378,6 +415,10 @@ class MainScreen {
     }
   }
   
+  /*
+  Handles click detection for the instructions and play
+  buttons
+  */
   int click(float x, float y) {
     if (bt1.contains(x,y)) {
       return 1;
@@ -388,6 +429,14 @@ class MainScreen {
     return -1;
   }
   
+  /*
+  Displays:
+   - blinking "turn up the sound"
+   - selected difficulty
+   - credits
+   - title
+   - instructions/play buttons 
+  */
   void tick(float t, float delta_t) {
     resetDrawState();
     color(0xFF);
@@ -430,6 +479,8 @@ class MainScreen {
     +"\n"
     +"The following is CC-0:\n"
     +"Good! sound by syseQ. Volume changed.\n"
+    +"\n"
+    +"Performance of Chopin's \"Winter Wind\" by AntonioPompaBaldi1"
     
     , width/2, height*.5);
     
@@ -460,6 +511,7 @@ class InstructionScreen {
   
   Rectangle2D.Float bt1;
   
+  /* Constructor for InstructionScreen */
   InstructionScreen() {
     float W = 150;
     float H = 50;
@@ -468,6 +520,7 @@ class InstructionScreen {
   
   boolean mo1 = false;
   
+  /* Checks if the mouse is over the button */
   void mouse(float x, float y) {
     mo1 = false;
     if (bt1.contains(x,y)) {
@@ -475,6 +528,7 @@ class InstructionScreen {
     }
   }
   
+  /* Checks if the mouse has clicked the button */
   int click(float x, float y) {
     if (bt1.contains(x,y)) {
       return 1;
@@ -482,6 +536,7 @@ class InstructionScreen {
     return -1;
   }
   
+  /* Draws instructions and button to screen. */
   void tick(float t, float delta_t) {
     resetDrawState();
     color(0xFF);
@@ -521,6 +576,9 @@ class InstructionScreen {
   }
 }
 
+/*
+   Represents a game session.
+*/
 class Game {
   int diff;
   int crash1 = -1;
@@ -533,12 +591,13 @@ class Game {
   
   int indexOfLastPlane = 0;
   
+  /*
+   Construct a new Game with difficulty in range [0, infinity)
+   Initializes the list of planes, with staggered start times.
+  */
   Game(int difficulty) {
     this.diff = diff;
-    int numPlanes = (diff)*20;
-    if (numPlanes == 0) {
-      numPlanes = 10;
-    }
+    int numPlanes = (diff+1)*20;
     
     planes = new Airplane[numPlanes];
     times = new float[numPlanes];
@@ -560,7 +619,12 @@ class Game {
       float safety = lerp(2.5, 1.8, min(difficulty/5.0, 1.0));
       planes[i] = new Airplane(start.x, start.y, theta, i%8, endRegion, safety);
       if (i > 0) {
-        times[i] = times[i-1]+random(1, avgTime+1);
+        float timeSafety = lerp(1,.5,max(difficulty/6.0, 0));
+        float timeDiff = avgTime+timeSafety;
+        if (difficulty > 8) {
+          timeDiff = timeSafety+2;
+        }
+        times[i] = times[i-1]+random(timeSafety, timeDiff);
       }
     }
   }
@@ -568,6 +632,15 @@ class Game {
   int ctr;
   static final int TICKS_BETWEEN_ALARM_CHECKS = 10;
   
+  /*
+   Draws essentially everything related to the HUD.
+   Also updates most of the logic.
+      - Checks if the game has ended, displays message if so.
+      - Displays time remaining
+      - Updates alarms every few ticks.
+      - Draws border pieces.
+      - Tells planes that are still alive/relevant to tick.
+  */
   void tick(float t, float delta_t) {
     resetDrawState();
     
@@ -709,14 +782,17 @@ class Game {
   }
   
   /*
-  Mouse Modes:
-  0 = normal, unclicked
-  1 = left clicked
+     Mouse Modes:
+     0 = normal, unclicked
+     1 = left clicked
   */
   int mouseMode = 0;
   PVector m = new PVector(0,0);
   int selectedPlane = -1;
   
+  /*
+    When mouse is released: tell plane to move to face the direction indicated by player.
+  */
   void released(float x, float y) {
     if (selectedPlane != -1) {
       Airplane p = planes[selectedPlane];
@@ -734,6 +810,9 @@ class Game {
     selectedPlane = -1;
   }
   
+  /*
+   
+  */
   void pressed(float x, float y) {
     for (int i = 0; i < planes.length; i++ ){
       if (planes[i].overlap(x,y)) {
