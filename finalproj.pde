@@ -8,6 +8,10 @@ Minim minim;
 AudioPlayer musicPlayer;
 PImage planeIcon;
 
+final float MUSIC_LENGTH = 201.5;
+final float FULL_FUEL = 2;
+final float WALL_THICKNESS = 40;
+
 MainScreen screen_m;
 InstructionScreen screen_i;
 Game g;
@@ -53,6 +57,9 @@ float t = 0;
 void draw() {
   resetDrawState();
   background(0);
+  
+  
+  
   float delta_t = 1/frameRate;
   t += delta_t;
   
@@ -65,6 +72,8 @@ void draw() {
   else if (currentScreen == SCREEN_PLAY) {
     g.draw(t, delta_t);
   }
+  
+  randomPosition(REGION_W);
 } 
 
 void mouseMoved() {
@@ -77,6 +86,10 @@ void mouseMoved() {
   else if (currentScreen == SCREEN_PLAY) {
     g.moved(mouseX, mouseY);
   }
+}
+
+void mouseDragged() {
+  mouseMoved();
 }
 
 void keyPressed() {
@@ -135,21 +148,31 @@ void resetDrawState() {
 
 class Airplane {
   float theta;
+  float targetTheta;
   PVector r;
   final float SPEED = 20.0;
   float fuel;
   float maxFuel;
+  int dest;
   
   AudioPlayer fuelAlarm = minim.loadFile("School_Fire_Alarm-Cullen_Card-202875844.mp3");
   AudioPlayer proxAlarm = minim.loadFile("Industrial Alarm-SoundBible.com-1012301296.mp3");
   
-  public Airplane(float safety) {
-    maxFuel = max(width, height)*sqrt(2)/SPEED;
+  public Airplane(float x, float y, float theta, int dest, float safety) {
+    maxFuel = max(width, height)*.5*sqrt(2)/SPEED;
     fuel = maxFuel*safety;
-    maxFuel *= 2; /* How much is "full" fuel? */
+    maxFuel *= FULL_FUEL;
     
-    theta = 0;
-    r = new PVector(width*random(1), height*random(1));
+    this.dest = dest;
+    this.theta = theta;
+    targetTheta = theta;
+    r = new PVector(x, y);
+  }
+  
+  boolean overlap(float x, float y) {
+    float a = x-r.x;
+    float b = y-r.y;
+    return sqrt(a*a+b*b) < 20;
   }
   
   color getFuelColor() {
@@ -171,10 +194,17 @@ class Airplane {
         scale(.2);
         rotate(-theta);
         if (fuel/maxFuel < .3) {
+          // Flash plane quickly if low on fuel
           tint(lerpColor(#FF0000, #00FFFF, sin(t*30)));
         }
         else {
-          tint(#FFFFFF);
+          if (abs(targetTheta - theta) > .2) {
+            // Plane flashes if turning
+            tint(lerpColor(#FFFFFF, #C5BCC6, sin(t*10)));
+          }
+          else {
+            tint(#FFFFFF);
+          }
         }
         image(planeIcon, 0,0);
         tint(#FFFFFF);
@@ -197,12 +227,28 @@ class Airplane {
       
       /* Draw destination */
       
-      text("Dest: SE", -20, 10);
-      
+      text("Dest: "+regionToString(dest), -20, 10);
       
     popMatrix();
     
-    theta += delta_t/2;
+    
+    /* Draw drag widget if necessary */
+    if (g.isPlaneSelected(this)) {
+      strokeWeight(3);
+      stroke(0xFF);
+      line(g.m.x, g.m.y, r.x, r.y);
+    }
+    
+    float TURN_SPEED = .1;
+    
+    if (targetTheta > theta) {
+      theta = min(theta + delta_t*TURN_SPEED, targetTheta);
+    }
+    else {
+      theta = max(theta - delta_t*TURN_SPEED, targetTheta);
+    }
+    
+    
     r.add(new PVector(SPEED*cos(theta)*delta_t, -SPEED*sin(theta)*delta_t));
     
     fuel = max(fuel-delta_t, 0);
@@ -362,6 +408,8 @@ class InstructionScreen {
     
     +"Each airplane has to make it to its destination before it runs out of fuel.\n\n\n\n"
     
+    +"Be sure to take into account the amount of time it takes a plane to turn.\n\n\n\n"
+    
     +"If an airplane goes off the radar in the wrong direction, it will reverse its\n  direction, but it will lose a lot of fuel.\n\n\n\n"
     
     +"All airplanes are at the same altitude. Don't let them crash!", 20.0, 20.0);
@@ -391,14 +439,30 @@ class Game {
   Airplane planes[];
   float times[];
   
+  int indexOfLastPlane = 0;
+  
   Game(int diff) {
     this.diff = diff;
-    int numPlanes = (diff+1)*20;
+    int numPlanes = (diff+2)*20;
     planes = new Airplane[numPlanes];
     times = new float[numPlanes];
+    
+    float avgTime = MUSIC_LENGTH/numPlanes;
+    times[0] = 0;
     for (int i = 0; i < numPlanes; i++) {
-      planes[i] = new Airplane(2.0);
-      times[i] = random(0, 201.5);
+      PVector start = randomPosition((i % 8));
+      
+      int endRegion = getRandomEndRegion(i%8);;
+      PVector end = randomPosition(endRegion);
+      
+      PVector difference = PVector.sub(end, start);
+      difference.y = -difference.y;
+      float theta = thetaFromVector(difference);
+      
+      planes[i] = new Airplane(start.x, start.y, theta, endRegion, 1.8);
+      if (i > 0) {
+        times[i] = times[i-1]+random(1, avgTime+1);
+      }
     }
   }
   
@@ -407,7 +471,6 @@ class Game {
     
  
     // Draw corner zones
-    final float THICKNESS = 40;
     
     fill(color(0x33, 0x33, 0x33, 0x88));
     stroke(0xFF);
@@ -418,8 +481,8 @@ class Game {
     /* NW */
     vertex(0,0);
     vertex(width/4, 0);
-    vertex(width/4, THICKNESS);
-    vertex(THICKNESS, height/4);
+    vertex(width/4, WALL_THICKNESS);
+    vertex(WALL_THICKNESS, height/4);
     vertex(0, height/4);
     endShape(CLOSE);
     
@@ -427,8 +490,8 @@ class Game {
     beginShape();
     vertex(0, height);
     vertex(width/4, height);
-    vertex(width/4, height-THICKNESS);
-    vertex(THICKNESS, height-height/4);
+    vertex(width/4, height-WALL_THICKNESS);
+    vertex(WALL_THICKNESS, height-height/4);
     vertex(0, height-height/4);
     endShape(CLOSE);
     
@@ -436,8 +499,8 @@ class Game {
     beginShape();
     vertex(width, height);
     vertex(width, height-height/4);
-    vertex(width-THICKNESS, height-height/4);
-    vertex(width-width/4, height-THICKNESS);
+    vertex(width-WALL_THICKNESS, height-height/4);
+    vertex(width-width/4, height-WALL_THICKNESS);
     vertex(width-width/4, height);
     endShape(CLOSE);
     
@@ -445,30 +508,30 @@ class Game {
     beginShape();
     vertex(width, 0);
     vertex(width-width/4, 0);
-    vertex(width-width/4, THICKNESS);
-    vertex(width-THICKNESS, height/4);
+    vertex(width-width/4, WALL_THICKNESS);
+    vertex(width-WALL_THICKNESS, height/4);
     vertex(width, height/4);
     endShape(CLOSE);
     
     /* Draw sides */
     rectMode(CORNERS);
     
-    rect(0, height/4, THICKNESS, height-height/4); // W
+    rect(0, height/4, WALL_THICKNESS, height-height/4); // W
     
-    rect(width-THICKNESS, height/4, width, height-height/4); // E
+    rect(width-WALL_THICKNESS, height/4, width, height-height/4); // E
     
-    rect(width/4, height-THICKNESS, width-width/4, height); // S
+    rect(width/4, height-WALL_THICKNESS, width-width/4, height); // S
 
-    rect(width/4, 0, width-width/4, THICKNESS); // N
+    rect(width/4, 0, width-width/4, WALL_THICKNESS); // N
 
     /* Draw labels */
     textSize(13);
     fill(0xFF);
     textAlign(CENTER, CENTER);
-    text("N", width/2, THICKNESS/2);
-    text("S", width/2, height-THICKNESS/2);
-    text("W", THICKNESS/2, height/2);
-    text("E", width-THICKNESS/2, height/2);
+    text("N", width/2, WALL_THICKNESS/2);
+    text("S", width/2, height-WALL_THICKNESS/2);
+    text("W", WALL_THICKNESS/2, height/2);
+    text("E", width-WALL_THICKNESS/2, height/2);
     
     text("NW", width*.1, height*.1);
     text("NE", width-width*.1, height*.1);
@@ -478,7 +541,14 @@ class Game {
         // Draw planes
     
     for (int i = 0; i < planes.length; i++ ) {
-      planes[i].draw(t, delta_t);
+      if (i > indexOfLastPlane) {
+        if (times[i] <= t) {
+          indexOfLastPlane = i;
+        }
+      }
+      if (i <= indexOfLastPlane) {
+        planes[i].draw(t, delta_t);
+      }
     }
 
   }
@@ -494,7 +564,16 @@ class Game {
   
   void released(float x, float y) {
     if (selectedPlane != -1) {
-      // do some stuff
+      Airplane p = planes[selectedPlane];
+      float a, b;
+      a = x - p.r.x;
+      b = -(y - p.r.y);
+      float theta = thetaFromVector(new PVector(a,b));
+      
+      
+      //theta = theta % (2*PI);
+      p.targetTheta = theta;
+      
     }
     mouseMode = 0;
     selectedPlane = -1;
@@ -516,4 +595,146 @@ class Game {
     m.x = x;
     m.y = y;
   }
+  
+  boolean isPlaneSelected(Airplane p) {
+    if (selectedPlane == -1) 
+      return false;
+    return planes[selectedPlane] == p;    
+  }
+}
+
+final int REGION_NW = 0;
+final int REGION_N = 1;
+final int REGION_NE = 2;
+final int REGION_E = 3;
+final int REGION_SE = 4;
+final int REGION_S = 5;
+final int REGION_SW = 6;
+final int REGION_W = 7;
+
+float[] getRegionBounds(int region) {
+  float ax, ay, bx, by;
+  float minx = 0, miny = 0, maxx = 0, maxy = 0;
+  
+  ax = WALL_THICKNESS/2;
+  ay = WALL_THICKNESS/2;
+  bx = width/8;
+  by = height/8;
+  
+  if (region == REGION_NW) {
+    minx = ax;
+    miny = ay;
+    maxx = bx;
+    maxy = by;
+  }
+  else if (region == REGION_SW) {
+    minx = ax;
+    maxy = height-ay;
+    maxx = bx;
+    miny = height-by;
+  }
+  else if (region == REGION_SE) {
+    maxx = width-ax;
+    maxy = height-ay;
+    minx = width-bx;
+    miny = height-by;
+  }
+  else if (region == REGION_NE) {
+    maxx = width-ax;
+    miny = ay;
+    minx = width-bx;
+    maxy = by;
+  }
+  
+  else if (region == REGION_N) {
+    minx = width/4;
+    maxx = width-width/4;
+    miny = WALL_THICKNESS/4;
+    maxy = WALL_THICKNESS*3.0/4;
+  }
+  else if (region == REGION_S) {
+    minx = width/4;
+    maxx = width-width/4;
+    maxy = height-WALL_THICKNESS/4;
+    miny = height-WALL_THICKNESS*3.0/4;
+  }
+  else if (region == REGION_E) {
+    miny = height/4;
+    maxy = height-height/4;
+    maxx = width-WALL_THICKNESS/4;
+    minx = width-WALL_THICKNESS*3.0/4;
+  }
+  else if (region == REGION_W) {
+    miny = height/4;
+    maxy = height-height/4;
+    minx = WALL_THICKNESS/4;
+    maxx = WALL_THICKNESS*3.0/4;
+  }
+  
+  float bounds[] = new float[4];
+  bounds[0] = minx;
+  bounds[1] = miny;
+  bounds[2] = maxx;
+  bounds[3] = maxy;
+  return bounds;
+}
+
+PVector randomPosition(int region) {
+  float bounds[] = getRegionBounds(region);
+  float minx = bounds[0];
+  float miny = bounds[1];
+  float maxx = bounds[2];
+  float maxy = bounds[3];
+  return new PVector(random(minx, maxx), random(miny, maxy));
+}
+
+float thetaFromVector(PVector v) {
+  float theta = 0;
+  float a = v.x;
+  float b = v.y;
+  
+  if ( abs(a) < .01 ) {
+    theta = (b > 0) ? PI/2 : -PI/2;
+  }
+  else {
+    theta = atan(b/a);
+    if (a < 0) {
+      theta += PI;
+    }
+  }
+  return theta;
+}
+
+String regionToString(int region) {
+  switch(region) {
+    case REGION_N:
+      return "N";
+    case REGION_S:
+      return "S";
+    case REGION_E:
+      return "E";
+    case REGION_W:
+      return "W";
+    case REGION_NE:
+      return "NE";
+    case REGION_SE:
+      return "SE";
+    case REGION_SW:
+      return "SW";
+    case REGION_NW:
+      return "NW";
+  }
+  return "?";
+}
+
+int getRandomEndRegion(int start_region) {
+  int possibles[] = new int[4];
+  possibles[0] = start_region+3;
+  possibles[1] = start_region+4;
+  possibles[2] = start_region-3;
+  possibles[3] = start_region-4;
+  for (int i = 0; i < possibles.length; i++) {
+    possibles[i] = (possibles[i]+8) % 8;
+  }
+  return possibles[(int)(round(random(0,3)))];
 }
