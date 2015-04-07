@@ -1,0 +1,11 @@
+The concept here is an Air Traffic Controller simulator.
+The player will click and drag airplanes to change their direction, and try not to let the planes crash.
+The game is over if the time runs out (in which case you win), all the planes reach their destination
+(also a winning scenario), or (losing scenarios ahead): two planes collide, or a plane runs out of fuel.
+
+Among the classes that will be needed are:
+StartScreen
+InstructionsScreen
+DifficultyScreen
+Airplane
+Region
