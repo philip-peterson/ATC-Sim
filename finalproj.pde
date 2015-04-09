@@ -305,7 +305,7 @@ class Airplane {
     
     float TURN_SPEED = .4;
     
-    float deltaTheta = angularDiff(targetTheta, theta);
+    float deltaTheta = Angle.sub(targetTheta, theta);
     
     
     if (deltaTheta > 0) {
@@ -318,7 +318,7 @@ class Airplane {
     theta = theta + 2*PI;
     theta = theta % (2*PI);
     
-    if (abs(angularDiff(targetTheta, theta)) < delta_t*TURN_SPEED) {
+    if (abs(Angle.sub(targetTheta, theta)) < delta_t*TURN_SPEED) {
       theta = targetTheta;
     }
     
@@ -1089,13 +1089,35 @@ int getRegionFromPoint(PVector p) {
   return -1;
 }
 
-// Number of degrees to add to a to get b
-// assume a and b are in [0, 2pi)
-float angularDiff(float b, float a) {
-  if (abs(b-a) > PI) {
-    return 2*PI-(b-a);
+static class Angle {
+  public static float normalize(float theta) {
+    return ((theta % (2*PI)) + (2*PI)) % (2*PI);
   }
-  return b-a;
+  
+ /**
+  * Computes "b-a" in angular terms, i.e. the smallest
+  * (in terms of magnitude) angle x such that a+x = b.
+  */
+  public static float sub(float b, float a) {
+    a = normalize(a);
+    b = normalize(b);
+    
+    float diff = b-a;
+    float mag = abs(diff);
+    
+    float answer = b-a;
+    if (mag < PI) {
+      return answer;
+    }
+    else {
+      if (answer > 0) {
+        return answer-2*PI;
+      }
+      else {
+        return 2*PI-answer;
+      }
+    }
+  }
 }
 
 String secsToTime(int secs) {
