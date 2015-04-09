@@ -9,3 +9,38 @@ InstructionsScreen
 DifficultyScreen
 Airplane
 Region
+Angle
+
+Angle class:
+```
+static class Angle {
+  public static float normalize(float theta) {
+    return ((theta % (2*PI)) + (2*PI)) % (2*PI);
+  }
+  
+ /**
+  * Computes "b-a" in angular terms, i.e. the smallest
+  * (in terms of magnitude) angle x such that a+x = b.
+  */
+  public static float sub(float b, float a) {
+    a = normalize(a);
+    b = normalize(b);
+    
+    float diff = b-a;
+    float mag = abs(diff);
+    
+    float answer = b-a;
+    if (mag < PI) {
+      return answer;
+    }
+    else {
+      if (answer > 0) {
+        return answer-2*PI;
+      }
+      else {
+        return 2*PI-answer;
+      }
+    }
+  }
+}
+```
