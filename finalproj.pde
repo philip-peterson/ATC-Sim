@@ -1,16 +1,28 @@
+/* Please do not look at this code. It's horrific! */
+
 //vim: sw=3:tabstop=3:sts=3:expandtab
 
-import java.awt.geom.Line2D;
-import java.awt.geom.Rectangle2D;
-import ddf.minim.* ;
+/* Quick shim for processing.JS */
+class Rectangle2D {
+   float x; float y; float width; float height;
+   Rectangle2D(float x, float y, float w, float h) {
+      this.x = x;
+      this.y = y;
+      this.width = w;
+      this.height = h;
+   }
+   boolean contains(float x2, float y2) {
+      if (x2 < x || x2 > x+width) {
+         return false;
+      }
+      if (y2 < y || y2 > y+height) {
+         return false;
+      }
+      return true;
+   }
+}
 
-Minim minim;
-AudioPlayer musicPlayer;
 PImage planeIcon;
-AudioPlayer fuelAlarm;
-AudioPlayer proxAlarm;
-AudioPlayer crashAlarm;
-AudioPlayer goodSound;
 
 final float MUSIC_LENGTH = 201.5;
 final float FULL_FUEL = 2.5;
@@ -43,25 +55,21 @@ void setup() {
   
   resetDrawState();
   fill(0xFF);
-  textSize(70);
-  textAlign(CENTER, CENTER);
-  text("Loading...", width/2, height/2);
-  
-  
-  minim = new Minim(this) ;
-  musicPlayer = minim.loadFile("chopin.mp3");
-  fuelAlarm = minim.loadFile("School_Fire_Alarm-Cullen_Card-202875844.wav");
-  
-  proxAlarm = minim.loadFile("Industrial Alarm-SoundBible.com-1012301296.wav");
-  
-  crashAlarm = minim.loadFile("Explosion_Ultra_Bass-Mark_DiAngelo-1810420658.wav");
-  
-  proxAlarm.setLoopPoints(100,2000);
-  
-  goodSound = minim.loadFile("267528__syseq__good.wav");
-  
 
-  planeIcon = loadImage("airplane_mode_on.png");
+  textSize(1);
+
+  pushMatrix();
+  scale(70);
+  textAlign(CENTER, CENTER);
+  text("Loading...", (width/2)/70, (height/2)/70);
+  popMatrix();
+  
+  
+  
+  
+  
+  
+  planeIcon = loadImage("data/airplane_mode_on.png");
   
   screen_m = new MainScreen();
   screen_i = new InstructionScreen();
@@ -117,18 +125,17 @@ void keyPressed() {
       difficulty = max(0, difficulty-1);
     }
     if (keyCode == 39) {
-      difficulty = min(27, difficulty+1);
+      difficulty = min(8, difficulty+1);
     }
   }
   if (currentScreen == SCREEN_PLAY) {
-    if (key == 27) {
-      key = 0;
+    if (keyCode == 27) {
       currentScreen = SCREEN_MAIN;
       g = null;
-      musicPlayer.pause();
-      proxAlarm.pause();
-      fuelAlarm.pause();
-      crashAlarm.pause();
+      stopSound(0);
+      stopSound(3);
+      stopSound(2);
+      stopSound(4);
     }
   }
 }
@@ -142,7 +149,7 @@ void mouseClicked() {
     if (res == 2) {
       gameStartTime = t;
       g = new Game(difficulty);
-      musicPlayer.play(12500);
+      playSound(0, 12.500);
       currentScreen = SCREEN_PLAY; // Go to difficulty selection
     }
   }
@@ -168,7 +175,6 @@ void mouseReleased() {
 }
 
 void resetDrawState() {
-  textSize(20);
   textAlign(LEFT, TOP);
   strokeWeight(1);
   stroke(0);
@@ -282,8 +288,11 @@ class Airplane {
       fill(getFuelColor());
       rect(-20,-3,lerp(-20, 20, fuel/maxFuel),3);
       textAlign(LEFT, CENTER);
-      textSize(9);
-      text(floor(fuel)+"s", 30, 0);
+
+      pushMatrix();
+      scale(9);
+      text(floor(fuel)+"s", 30/9, 0);
+      popMatrix();
       
       /* Draw destination */
       
@@ -305,7 +314,7 @@ class Airplane {
     
     float TURN_SPEED = .4;
     
-    float deltaTheta = angularDiff(targetTheta, theta);
+    float deltaTheta = Angle.sub(targetTheta, theta);
     
     
     if (deltaTheta > 0) {
@@ -318,7 +327,7 @@ class Airplane {
     theta = theta + 2*PI;
     theta = theta % (2*PI);
     
-    if (abs(angularDiff(targetTheta, theta)) < delta_t*TURN_SPEED) {
+    if (abs(Angle.sub(targetTheta, theta)) < delta_t*TURN_SPEED) {
       theta = targetTheta;
     }
     
@@ -332,7 +341,7 @@ class Airplane {
       if (region == dest) {
         // This plane is no longer "alive" (has succeeded in its journey)
         this.haveNotReachedDestination = false;
-        goodSound.play(0);
+        playSound(1);
         return;
       }
       else if (region == source) {
@@ -361,8 +370,8 @@ class Airplane {
     if (fuel <= 0) {
       g.over = true;
       g.planeThatRanOut = this;
-      proxAlarm.pause();
-      musicPlayer.pause();
+      stopSound(3);
+      stopSound(0);
     }
   }
   
@@ -386,8 +395,8 @@ String diffToString(int diff) {
 
 class MainScreen {
   
-  Rectangle2D.Float bt1;
-  Rectangle2D.Float bt2;
+  Rectangle2D bt1;
+  Rectangle2D bt2;
   
   /*
   Constructor for MainScreen.
@@ -395,8 +404,8 @@ class MainScreen {
   MainScreen() {
     float W = 150;
     float H = 50;
-    bt1 = new Rectangle2D.Float(width*(.5-.2)-W/2, height*.9-H/2, W, H);
-    bt2 = new Rectangle2D.Float(width*(.5+.2)-W/2, height*.9-H/2, W, H);
+    bt1 = new Rectangle2D(width*(.5-.2)-W/2, height*.9-H/2, W, H);
+    bt2 = new Rectangle2D(width*(.5+.2)-W/2, height*.9-H/2, W, H);
   }
   
   boolean mo1 = false;
@@ -441,35 +450,52 @@ class MainScreen {
     resetDrawState();
     color(0xFF);
     noStroke();
-    
-    textSize(70);
+
     textAlign(CENTER, CENTER);
-    text("ATC-Sim", width/2, height*.2);
     
-    textSize(13);
-    text("By Philip Peterson", width/2, height*.3);
-    textSize(15);
+    pushMatrix();
+    translate(width/2, height*.2);
+    scale(70);
+    text("ATC-Sim", 0, 0);
+    popMatrix();
     
+    pushMatrix();
+    translate(width/2, height*.3);
+    scale(13);
+    text("By Philip Peterson", 0, 0);
+    popMatrix();
+
     textAlign(RIGHT, CENTER);
-    textSize(25);
-    text("Difficulty: ", width/2, height*.7);
+    pushMatrix();
+    translate(width/2, height*.7);
+    scale(25);
+    text("Difficulty: ", 0, 0);
     
     textAlign(LEFT, CENTER);
-    text(diffToString(difficulty), width/2, height*.7);
+    text(diffToString(difficulty), 0, 0);
+    popMatrix();
     
+    pushMatrix();
     textAlign(CENTER, CENTER);
-    textSize(13);
-    text("(Use left/right arrow keys to change)", width/2, height*.73);
+    translate(width/2, height*.73);
+    scale(13);
+    text("(Use left/right arrow keys to change)", 0, 0);
+    popMatrix();
     
-    textSize(15);
+    pushMatrix();
+    translate(width/2, height*.8);
+    scale(15);
     if (t % 1 < .5) {
       fill(#FFFF00);
     }
-    text("Turn up the sound!", width/2, height*.8);
+    text("Turn up the sound!", 0, 0);
+    popMatrix();
     
     fill(0xFF);
     
-    textSize(10);
+    pushMatrix();
+    translate(width/2, height/2);
+    scale(10);
     text(
     "The following are CC-by-SA (https://creativecommons.org/licenses/by/3.0/us/)\n"
     +"Airplane icon by VisualPharm. Colors were inverted.\n"
@@ -480,9 +506,14 @@ class MainScreen {
     +"The following is CC-0:\n"
     +"Good! sound by syseQ. Volume changed.\n"
     +"\n"
-    +"Performance of Chopin's \"Winter Wind\" by AntonioPompaBaldi1"
     
-    , width/2, height*.5);
+    , 0,0);
+
+    translate(0, 10);
+   
+    scale(1.5);
+    text("Performance of Chopin's \"Winter Wind\" by Dr. Antonio Pompa-Baldi\n(Soundcloud: AntonioPompaBaldi1)", 0, 0);
+    popMatrix();
     
     
     stroke(0xFF);
@@ -501,9 +532,18 @@ class MainScreen {
     rect(bt2.x, bt2.y, bt2.x+bt2.width, bt2.y+bt2.height, 20);
     
     fill(0xFF);
-    textSize(20);
-    text("Instructions", bt1.x+bt1.width/2, bt1.y+bt1.height/2-2);
-    text("Play", bt2.x+bt2.width/2, bt2.y+bt2.height/2-2);
+
+    pushMatrix();
+    translate(bt1.x+bt1.width/2, bt1.y+bt1.height/2-2);
+    scale(20);
+    text("Instructions", 0, 0);
+    popMatrix();
+
+    pushMatrix();
+    translate(bt2.x+bt2.width/2, bt2.y+bt2.height/2-2);
+    scale(20);
+    text("Play", 0, 0);
+    popMatrix();
   }
 }
 
@@ -515,7 +555,7 @@ class InstructionScreen {
   InstructionScreen() {
     float W = 150;
     float H = 50;
-    bt1 = new Rectangle2D.Float(width*(.5-.2)-W/2, height*.9-H/2, W, H);
+    bt1 = new Rectangle2D(width*(.5-.2)-W/2, height*.9-H/2, W, H);
   }
   
   boolean mo1 = false;
@@ -543,18 +583,18 @@ class InstructionScreen {
     noStroke();
     
     textAlign(LEFT, TOP);
-    text(
+    textx(
     
     "Each airplane has to make it to its destination before it runs out of fuel.\nThe goal is to get all the airplanes to their destination, or to have the time run out\n"
     +"without crashing.\n\n\n"
     
     +"Click and drag an airplane to change its heading.\nNote that this takes time because of inertia.\nWhen an airplane is turning, it will pulsate in brightness to indicate this.\n\n\n"
     
-    +"If an airplane goes off the radar in the wrong direction, it will get warped back to the start, costing you fuel.\n\n\n\n"
+    +"If an airplane goes off the radar in the wrong direction, it will get warped back\nto the start, costing you fuel.\n\n\n\n"
     
     +"You can stop the game by pressing (Esc).\n\n\n\n"
     
-    +"All airplanes are at the same altitude. Don't let them crash!", 20.0, 20.0);
+    +"All airplanes are at the same altitude. Don't let them crash!", 24, 20.0, 20.0);
     
     /* Draw buttons */
     
@@ -571,8 +611,11 @@ class InstructionScreen {
     
     textAlign(CENTER, CENTER);
     fill(0xFF);
-    textSize(20);
-    text("Back to Menu", bt1.x+bt1.width/2, bt1.y+bt1.height/2-2);
+    pushMatrix();
+    translate(bt1.x+bt1.width/2, bt1.y+bt1.height/2-2);
+    scale(20);
+    text("Back to Menu", 0, 0);
+    popMatrix();
   }
 }
 
@@ -650,8 +693,12 @@ class Game {
     
     fill(0x33);
     textAlign(CENTER, CENTER);
-    textSize(40);
-    text("Time remaining: " + secsToTime(round(MUSIC_LENGTH - t)), width/2, height/2);
+
+    pushMatrix();
+    translate( width/2, height/2);
+    scale(40);
+    text("Time remaining: " + secsToTime(round(MUSIC_LENGTH - t)), 0, 0);
+    popMatrix();
     
     if (!over) {
       ctr++;
@@ -716,18 +763,18 @@ class Game {
     rect(width/4, 0, width-width/4, WALL_THICKNESS); // N
 
     /* Draw labels */
-    textSize(13);
     fill(0xFF);
     textAlign(CENTER, CENTER);
-    text("N", width/2, WALL_THICKNESS/2);
-    text("S", width/2, height-WALL_THICKNESS/2);
-    text("W", WALL_THICKNESS/2, height/2);
-    text("E", width-WALL_THICKNESS/2, height/2);
+
+    textx("N",  13, width/2, WALL_THICKNESS/2);
+    textx("S",  13, width/2, height-WALL_THICKNESS/2);
+    textx("W",  13, WALL_THICKNESS/2, height/2);
+    textx("E",  13, width-WALL_THICKNESS/2, height/2);
     
-    text("NW", width*.1, height*.1);
-    text("NE", width-width*.1, height*.1);
-    text("SW", width*.1, height-height*.1);
-    text("SE", width-width*.1, height-height*.1);
+    textx("NW", 13, width*.1, height*.1);
+    textx("NE", 13, width-width*.1, height*.1);
+    textx("SW", 13, width*.1, height-height*.1);
+    textx("SE", 13, width-width*.1, height-height*.1);
     
         // Draw planes
     
@@ -750,8 +797,7 @@ class Game {
     if (over) {
       textAlign(CENTER);
       color(0xFF);
-      textSize(20);
-      text("GAME OVER", width*.5, height*.4);
+      textx("GAME OVER", 20, width*.5, height*.4);
       
       ellipseMode(CENTER);
       strokeWeight(5);
@@ -760,20 +806,20 @@ class Game {
       
       // Display failure explanation
       if (planeThatRanOut != null) {
-        text("RAN OUT OF FUEL", width*.5, height*.5);
+        textx("RAN OUT OF FUEL", 20, width*.5, height*.5);
         ellipse(planeThatRanOut.r.x, planeThatRanOut.r.y, 100, 100);
       }
       
       else if (crash1 != -1 && crash2 != -1) {
-        text("MID-AIR COLLISION", width*.5, height*.5);
+        textx("MID-AIR COLLISION", 20, width*.5, height*.5);
         ellipse(planes[crash1].r.x, planes[crash1].r.y, 80, 80);
       }
       
       else {
-        text("YOU WON!", width*.5, height*.5);
+        textx("YOU WON!", 20, width*.5, height*.5);
       }
       
-      text("Press (Esc) to return to menu.", width*.5, height*.6);
+      textx("Press (Esc) to return to menu.", 20, width*.5, height*.6);
       
     }
     
@@ -877,32 +923,22 @@ class Game {
     }
     
     if(isFuelAlarm) {
-      if (!fuelAlarm.isPlaying()) {
-        fuelAlarm.rewind();
-        fuelAlarm.play();
-      }
+      loopSound(4);
     }
     
     if(isCrashAlarm) {
-      if (!crashAlarm.isPlaying()) {
-        crashAlarm.rewind();
-        crashAlarm.play();
-      }
-      musicPlayer.pause();
-      proxAlarm.pause();
+      playSound(2);
+      stopSound(0);
+      stopSound(3);
       g.over = true;
       g.crash1 = crash1;
       g.crash2 = crash2;
     }
     else if(isDistanceAlarm) {
-      
-      if (!proxAlarm.isPlaying()) {
-        proxAlarm.rewind();
-        proxAlarm.loop();
-      }
+      loopSound(3);
     }
     else {
-      proxAlarm.pause(); 
+      stopSound(3);
       if(!atLeastOneAlive) {
         over = true;
       }
@@ -1089,23 +1125,55 @@ int getRegionFromPoint(PVector p) {
   return -1;
 }
 
-// Number of degrees to add to a to get b
-// assume a and b are in [0, 2pi)
-float angularDiff(float b, float a) {
-  if (abs(b-a) > PI) {
-    return 2*PI-(b-a);
+static class Angle {
+  public static float normalize(float theta) {
+    return ((theta % (2*PI)) + (2*PI)) % (2*PI);
   }
-  return b-a;
+  
+ /**
+  * Computes "b-a" in angular terms, i.e. the smallest
+  * (in terms of magnitude) angle x such that a+x = b.
+  */
+  public static float sub(float b, float a) {
+    a = normalize(a);
+    b = normalize(b);
+    
+    float diff = b-a;
+    float mag = abs(diff);
+    
+    float answer = b-a;
+    if (mag < PI) {
+      return answer;
+    }
+    else {
+      if (answer > 0) {
+        return answer-2*PI;
+      }
+      else {
+        return 2*PI-answer;
+      }
+    }
+  }
 }
 
 String secsToTime(int secs) {
   
   secs = max(secs, 0);
-  String s = (secs/60)+":";
+  String s = floor(secs/60)+":";
   secs = secs % 60;
   if (secs < 10) {
     s += "0";
   }
   s += secs;
   return s;
+}
+
+// Convenience function for drawing text because Processing.js's
+// textSize is broken as of writing this code.
+void textx(String t, float s, float x, float y) {
+   pushMatrix();
+   translate(x,y);
+   scale(s);
+   text(t, 0, 0);
+   popMatrix();
 }

@@ -1,0 +1,60 @@
+<!doctype html>
+<head>
+   <script src="bower_components/processing/processing.min.js"></script>
+   <script>
+      var playSound;
+      var stopSound;
+      var loopSound;
+      var AUDIO_IS_LOADING = true;
+
+      (function () {
+         var sources = [
+            'data/chopin.ogg',
+            'data/267528__syseq__good.ogg',
+            'data/Explosion_Ultra_Bass-Mark_DiAngelo-1810420658.ogg',
+            'data/Industrial Alarm-SoundBible.com-1012301296.ogg',
+            'data/School_Fire_Alarm-Cullen_Card-202875844.ogg',
+         ];
+         var objs = [];
+         var loaded = 0;
+         for (var i = 0; i < sources.length; i++) {
+            var obj = new Audio(sources[i])
+            objs.push(obj);
+            if (i == 3 || i == 4) {
+               obj.loop = true;
+            }
+            obj.canplaythrough = function() {
+               loaded++;
+               if (loaded == sources.length) {
+                  AUDIO_IS_LOADING = false;
+               }
+            };
+         }
+         playSound = function(i, start) {
+            if (start === undefined) {
+               start = 0;
+            }
+            var s = objs[i];
+            s.pause();
+            s.currentTime = start;
+            s.play();
+         };
+         stopSound = function(i) {
+            var s = objs[i];
+            s.pause();
+            s.currentTime = 0;
+         };
+         loopSound = function(i) {
+            var s = objs[i];
+            if (s.paused) {
+               playSound(i);
+            }
+         };
+      })();
+
+   </script>
+</head>
+<body>
+   <canvas data-processing-sources="finalproj.pde"></canvas>
+</body>
+</html>
