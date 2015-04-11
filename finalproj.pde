@@ -537,7 +537,7 @@ class MainScreen {
     translate(0, 10);
    
     scale(1.5);
-    text("Performance of Chopin's \"Winter Wind\" by Dr. Antonio Pompa-Baldi\nUsed with permission.\n(Soundcloud: AntonioPompaBaldi1)", 0, 0);
+    text("Performance of Chopin's \"Winter Wind\" by Antonio Pompa-Baldi\nUsed with permission.\n(Soundcloud: AntonioPompaBaldi1)", 0, 0);
     popMatrix();
     
     
