@@ -31,6 +31,9 @@ final float DISTANCE_ALARM_DIST = 80;
 final float CRASH_DIST = 25;
 final float FUEL_ALARM_SECS = 15;
 
+boolean proximityAlarmActive = false;
+boolean fuelAlarmActive = false;
+
 MainScreen screen_m;
 InstructionScreen screen_i;
 Game g;
@@ -87,6 +90,8 @@ void draw() {
     stopSound(3);
     stopSound(2);
     stopSound(4);
+    fuelAlarmActive = false;
+    proximityAlarmActive = false;
     wantsExit = false;
   }
 
@@ -393,7 +398,24 @@ String diffToString(int diff) {
   if (diff == 2) {
     return "Hard";
   }
-  return "Very Hard ("+(diff-2)+")";
+
+  if (diff == 6) {
+    return "Are you crazy?";
+  }
+
+  if (diff == 7) {
+    return "Insane!";
+  }
+
+  if (diff == 8) {
+    return "There's no way you're beating this.";
+  }
+
+  String r = "Hard";
+  for (int i = 0; i < (diff-2); i++) {
+    r = "Very " + r;
+  }
+  return r;
 }
 
 class MainScreen {
@@ -515,7 +537,7 @@ class MainScreen {
     translate(0, 10);
    
     scale(1.5);
-    text("Performance of Chopin's \"Winter Wind\" by Dr. Antonio Pompa-Baldi\n(Soundcloud: AntonioPompaBaldi1)", 0, 0);
+    text("Performance of Chopin's \"Winter Wind\" by Dr. Antonio Pompa-Baldi\nUsed with permission.\n(Soundcloud: AntonioPompaBaldi1)", 0, 0);
     popMatrix();
     
     
@@ -701,6 +723,16 @@ class Game {
     translate( width/2, height/2);
     scale(40);
     text("Time remaining: " + secsToTime(round(MUSIC_LENGTH - t)), 0, 0);
+    translate(0, 2);
+    fill(#FF0000);
+    if (proximityAlarmActive && (t % .5) < .25) {
+       text("PROXIMITY ALARM", 0, 0);
+    }
+    translate(0, -4);
+    fill(#FF8800);
+    if (fuelAlarmActive && ((t+.25) % 1) < .5) {
+       text("FUEL ALARM", 0, 0);
+    }
     popMatrix();
     
     if (!over) {
@@ -927,6 +959,11 @@ class Game {
     
     if(isFuelAlarm) {
       loopSound(4);
+      fuelAlarmActive = true;
+    }
+    else {
+      stopSound(4);
+      fuelAlarmActive = false;
     }
     
     if(isCrashAlarm) {
@@ -939,9 +976,11 @@ class Game {
     }
     else if(isDistanceAlarm) {
       loopSound(3);
+      proximityAlarmActive = true;
     }
     else {
       stopSound(3);
+      proximityAlarmActive = false;
       if(!atLeastOneAlive) {
         over = true;
       }

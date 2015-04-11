@@ -1,10 +1,18 @@
 <!doctype html>
 <head>
+   <title>ATC-Sim</title>
    <script src="bower_components/processing/processing.min.js"></script>
    <script>
+      var currentScreen = 0;
+
+      function screenDidChange() {
+         document.getElementById('link').style.display = (currentScreen == 0 ? '' : 'none');
+      }
+
       var playSound;
       var stopSound;
       var loopSound;
+      var wantsExit = false;
       var AUDIO_IS_LOADING = true;
 
       (function () {
@@ -22,6 +30,15 @@
             objs.push(obj);
             if (i == 3 || i == 4) {
                obj.loop = true;
+            }
+            if (i == 3) {
+               obj.volume = .2;
+            }
+            if (i == 1) {
+               obj.volume = .8;
+            }
+            if (i == 2) {
+               obj.volume = .6;
             }
             obj.canplaythrough = function() {
                loaded++;
@@ -52,9 +69,43 @@
          };
       })();
 
+      window.onkeyup = function(event) {
+         if (event.keyCode === 27) {
+            wantsExit = true;
+         }
+      };
+
    </script>
+   <style>
+      body, html {
+         padding: 0;
+         margin: 0;
+         text-align: center;
+         background-color: black;
+         font-size: 1px;
+      }
+      canvas {
+         outline: none;
+      }
+      #link {
+         display: inline-block;
+         position: relative;
+         left: 0px;
+         top: -400px;
+         width: 500px;
+         height: 70px;
+         background-color: transparent;
+      }
+   </style>
 </head>
 <body>
+   <script>
+      if(typeof window.orientation !== 'undefined'){
+         alert("This game doesn't work too well on mobile.\n\nSorry about that!");
+      }
+   </script>
    <canvas data-processing-sources="finalproj.pde"></canvas>
+   <br>
+   <a href="http://www.pompa-baldi.com/" id='link'>&nbsp;</a>
 </body>
 </html>
