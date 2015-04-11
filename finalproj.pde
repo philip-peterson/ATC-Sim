@@ -296,7 +296,7 @@ class Airplane {
       
       /* Draw destination */
       
-      text("Dest: "+regionToString(dest), -20, 10);
+      textx("Dest: "+regionToString(dest), 9, -20, 10);
       
     popMatrix();
     
