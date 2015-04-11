@@ -1,6 +1,6 @@
-/* Please do not look at this code. It's horrific! */
-
 //vim: sw=3:tabstop=3:sts=3:expandtab
+
+/* Please do not look at this code. It's horrific! */
 
 /* Quick shim for processing.JS */
 class Rectangle2D {
@@ -44,7 +44,6 @@ PVector GLOBAL_G = new PVector(0.0, 9.8*PIXELS_PER_METER);
 final int SCREEN_MAIN = 0;
 final int SCREEN_INST = 1;
 final int SCREEN_PLAY = 2;
-int currentScreen = SCREEN_MAIN;
 
 int difficulty = 1; /*  Difficulty selection. Copied into the Game object when it is constructed. */
 
@@ -80,6 +79,17 @@ float t = 0;
 float gameStartTime = 0;
 
 void draw() {
+  if(wantsExit && currentScreen != SCREEN_MAIN) {
+    currentScreen = SCREEN_MAIN;
+    screenDidChange();
+    g = null;
+    stopSound(0);
+    stopSound(3);
+    stopSound(2);
+    stopSound(4);
+    wantsExit = false;
+  }
+
   resetDrawState();
   background(0);
   
@@ -128,16 +138,6 @@ void keyPressed() {
       difficulty = min(8, difficulty+1);
     }
   }
-  if (currentScreen == SCREEN_PLAY) {
-    if (keyCode == 27) {
-      currentScreen = SCREEN_MAIN;
-      g = null;
-      stopSound(0);
-      stopSound(3);
-      stopSound(2);
-      stopSound(4);
-    }
-  }
 }
 
 void mouseClicked() {
@@ -145,18 +145,21 @@ void mouseClicked() {
     int res = screen_m.click(mouseX, mouseY);
     if (res == 1) {
       currentScreen = SCREEN_INST; // Go to instructions
+      screenDidChange();
     }
     if (res == 2) {
       gameStartTime = t;
       g = new Game(difficulty);
       playSound(0, 12.500);
       currentScreen = SCREEN_PLAY; // Go to difficulty selection
+      screenDidChange();
     }
   }
   else if (currentScreen == SCREEN_INST) {
     int res = screen_i.click(mouseX, mouseY);
     if (res == 1) {
       currentScreen = SCREEN_MAIN; // Go to instructions
+      screenDidChange();
     }
   }
   
@@ -498,13 +501,13 @@ class MainScreen {
     scale(10);
     text(
     "The following are CC-by-SA (https://creativecommons.org/licenses/by/3.0/us/)\n"
-    +"Airplane icon by VisualPharm. Colors were inverted.\n"
-    +"Industrial Alarm sound by Mike Koenig. Trimmed and volume changed.\n"
-    +"School Fire Alarm sound by Cullen Card. Trimmed and volume changed.\n"
-    +"Explosion Ultra Bass sound by Mark DiAngelo. Volume changed.\n"
+    +"Airplane icon by VisualPharm. Colors were inverted. Converted to Ogg format.\n"
+    +"Industrial Alarm sound by Mike Koenig. Converted to Ogg format.\n"
+    +"School Fire Alarm sound by Cullen Card. Converted to Ogg format.\n"
+    +"Explosion Ultra Bass sound by Mark DiAngelo. Converted to Ogg format.\n"
     +"\n"
     +"The following is CC-0:\n"
-    +"Good! sound by syseQ. Volume changed.\n"
+    +"Good! sound by syseQ. Converted to Ogg format.\n"
     +"\n"
     
     , 0,0);
@@ -652,7 +655,7 @@ class Game {
       PVector start = randomPosition((i % 8));
       
       int endRegion = getRandomEndRegion(i%8);;
-      PVector end = randomPosition(endRegion);
+      PVector end = randomPosition(jitterRegion(endRegion));
       
       PVector difference = PVector.sub(end, start);
       difference.y = -difference.y;
@@ -758,7 +761,7 @@ class Game {
     
     rect(width-WALL_THICKNESS, height/4, width, height-height/4); // E
     
-    rect(width/4, height-WALL_THICKNESS, width-width/4, height); // S
+    rect(width/4, height-WALL_THICKNESS, width-width/4, height-1); // S
 
     rect(width/4, 0, width-width/4, WALL_THICKNESS); // N
 
@@ -1176,4 +1179,12 @@ void textx(String t, float s, float x, float y) {
    scale(s);
    text(t, 0, 0);
    popMatrix();
+}
+
+int jitterRegion(int region) {
+   int t = region + round(random(-1, 1));
+   if (t < 0) 
+      t += 8;
+   t = t % 8;
+   return t;
 }
