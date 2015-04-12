@@ -523,13 +523,13 @@ class MainScreen {
     scale(1.0);
     text(
     "The following are CC-by-SA (https://creativecommons.org/licenses/by/3.0/us/)\n"
-    +"Airplane icon by VisualPharm. Colors were inverted. Converted to Ogg format.\n"
-    +"Industrial Alarm sound by Mike Koenig. Converted to Ogg format.\n"
-    +"School Fire Alarm sound by Cullen Card. Converted to Ogg format.\n"
-    +"Explosion Ultra Bass sound by Mark DiAngelo. Converted to Ogg format.\n"
+    +"Airplane icon by VisualPharm. Colors were inverted. Converted to Ogg/MP3 format.\n"
+    +"Industrial Alarm sound by Mike Koenig. Converted to Ogg/MP3 format.\n"
+    +"School Fire Alarm sound by Cullen Card. Converted to Ogg/MP3 format.\n"
+    +"Explosion Ultra Bass sound by Mark DiAngelo. Converted to Ogg/MP3 format.\n"
     +"\n"
     +"The following is CC-0:\n"
-    +"Good! sound by syseQ. Converted to Ogg format.\n"
+    +"Good! sound by syseQ. Converted to Ogg/MP3 format.\n"
     +"\n"
     
     , 0,0);
