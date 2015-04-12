@@ -927,9 +927,9 @@ class Game {
     for (int i = 0; i <= indexOfLastPlane; i++) {
       if (planes[i].haveNotReachedDestination) {
         atLeastOneAlive = true;
-      }
-      if (planes[i].fuel < FUEL_ALARM_SECS) {
-        isFuelAlarm = true;
+         if (planes[i].fuel < FUEL_ALARM_SECS) {
+           isFuelAlarm = true;
+         }
       }
       for (int j = 0; j <= indexOfLastPlane; j++) {
         if (i == j) {

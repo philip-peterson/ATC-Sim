@@ -1,7 +1,7 @@
 <!doctype html>
 <head>
    <title>ATC-Sim</title>
-   <script src="bower_components/processing/processing.min.js"></script>
+   <meta charset="UTF-8">
    <script>
       var currentScreen = 0;
 
@@ -20,14 +20,28 @@
             'data/chopin.ogg',
             'data/267528__syseq__good.ogg',
             'data/Explosion_Ultra_Bass-Mark_DiAngelo-1810420658.ogg',
-            'data/Industrial Alarm-SoundBible.com-1012301296.ogg',
+            'data/Industrial%20Alarm-SoundBible.com-1012301296.ogg',
             'data/School_Fire_Alarm-Cullen_Card-202875844.ogg',
          ];
          var objs = [];
          var loaded = 0;
+
+         var canPlay = (new Audio()).canPlayType('application/ogg');
          for (var i = 0; i < sources.length; i++) {
-            var obj = new Audio(sources[i])
+            if (!canPlay) {
+               sources[i] = sources[i].replace(/\.ogg$/, '.mp3');
+            }
+            var obj = new Audio(sources[i]);
+            obj.autoplay = false;
             objs.push(obj);
+            if (i == 0) {
+               try {
+               obj.currentTime = 12.5;
+               }
+               catch(e) {
+
+               }
+            }
             if (i == 3 || i == 4) {
                obj.loop = true;
             }
@@ -53,8 +67,8 @@
             }
             var s = objs[i];
             s.pause();
-            s.currentTime = start;
             s.play();
+            s.currentTime = start;
          };
          stopSound = function(i) {
             var s = objs[i];
@@ -97,6 +111,7 @@
          background-color: transparent;
       }
    </style>
+   <script src="bower_components/processing/processing.min.js"></script>
 </head>
 <body>
    <script>
