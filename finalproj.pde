@@ -1,4 +1,4 @@
-//vim: sw=3:tabstop=3:sts=3:expandtab
+﻿//vim: sw=3:tabstop=3:sts=3:expandtab
 
 /* Please do not look at this code. It's horrific! */
 
@@ -58,12 +58,12 @@ void setup() {
   resetDrawState();
   fill(0xFF);
 
-  textSize(1);
+  textSize(10);
 
   pushMatrix();
-  scale(70);
+  scale(7);
   textAlign(CENTER, CENTER);
-  text("Loading...", (width/2)/70, (height/2)/70);
+  text("Loading...", (width/2)/7, (height/2)/7);
   popMatrix();
   
   
@@ -298,13 +298,13 @@ class Airplane {
       textAlign(LEFT, CENTER);
 
       pushMatrix();
-      scale(9);
-      text(floor(fuel)+"s", 30/9, 0);
+      scale(.9);
+      text(floor(fuel)+"s", 300/9, 0);
       popMatrix();
       
       /* Draw destination */
       
-      textx("Dest: "+regionToString(dest), 9, -20, 10);
+      textx("Dest: "+regionToString(dest), .9, -20, 10);
       
     popMatrix();
     
@@ -480,20 +480,20 @@ class MainScreen {
     
     pushMatrix();
     translate(width/2, height*.2);
-    scale(70);
+    scale(7);
     text("ATC-Sim", 0, 0);
     popMatrix();
     
     pushMatrix();
     translate(width/2, height*.3);
-    scale(13);
+    scale(1.3);
     text("By Philip Peterson", 0, 0);
     popMatrix();
 
     textAlign(RIGHT, CENTER);
     pushMatrix();
     translate(width/2, height*.7);
-    scale(25);
+    scale(2.5);
     text("Difficulty: ", 0, 0);
     
     textAlign(LEFT, CENTER);
@@ -503,13 +503,13 @@ class MainScreen {
     pushMatrix();
     textAlign(CENTER, CENTER);
     translate(width/2, height*.73);
-    scale(13);
+    scale(1.3);
     text("(Use left/right arrow keys to change)", 0, 0);
     popMatrix();
     
     pushMatrix();
     translate(width/2, height*.8);
-    scale(15);
+    scale(1.5);
     if (t % 1 < .5) {
       fill(#FFFF00);
     }
@@ -520,7 +520,7 @@ class MainScreen {
     
     pushMatrix();
     translate(width/2, height/2);
-    scale(10);
+    scale(1.0);
     text(
     "The following are CC-by-SA (https://creativecommons.org/licenses/by/3.0/us/)\n"
     +"Airplane icon by VisualPharm. Colors were inverted. Converted to Ogg format.\n"
@@ -534,7 +534,7 @@ class MainScreen {
     
     , 0,0);
 
-    translate(0, 10);
+    translate(0, 100);
    
     scale(1.5);
     text("Performance of Chopin's \"Winter Wind\" by Antonio Pompa-Baldi\nUsed with permission.\n(Soundcloud: AntonioPompaBaldi1)", 0, 0);
@@ -560,13 +560,13 @@ class MainScreen {
 
     pushMatrix();
     translate(bt1.x+bt1.width/2, bt1.y+bt1.height/2-2);
-    scale(20);
+    scale(2.0);
     text("Instructions", 0, 0);
     popMatrix();
 
     pushMatrix();
     translate(bt2.x+bt2.width/2, bt2.y+bt2.height/2-2);
-    scale(20);
+    scale(2.0);
     text("Play", 0, 0);
     popMatrix();
   }
@@ -619,7 +619,7 @@ class InstructionScreen {
     
     +"You can stop the game by pressing (Esc).\n\n\n\n"
     
-    +"All airplanes are at the same altitude. Don't let them crash!", 24, 20.0, 20.0);
+    +"All airplanes are at the same altitude. Don't let them crash!", 2.4, 20.0, 20.0);
     
     /* Draw buttons */
     
@@ -638,7 +638,7 @@ class InstructionScreen {
     fill(0xFF);
     pushMatrix();
     translate(bt1.x+bt1.width/2, bt1.y+bt1.height/2-2);
-    scale(20);
+    scale(2.0);
     text("Back to Menu", 0, 0);
     popMatrix();
   }
@@ -721,14 +721,14 @@ class Game {
 
     pushMatrix();
     translate( width/2, height/2);
-    scale(40);
+    scale(4.0);
     text("Time remaining: " + secsToTime(round(MUSIC_LENGTH - t)), 0, 0);
-    translate(0, 2);
+    translate(0, 20);
     fill(#FF0000);
     if (proximityAlarmActive && (t % .5) < .25) {
        text("PROXIMITY ALARM", 0, 0);
     }
-    translate(0, -4);
+    translate(0, -40);
     fill(#FF8800);
     if (fuelAlarmActive && ((t+.25) % 1) < .5) {
        text("FUEL ALARM", 0, 0);
@@ -801,15 +801,15 @@ class Game {
     fill(0xFF);
     textAlign(CENTER, CENTER);
 
-    textx("N",  13, width/2, WALL_THICKNESS/2);
-    textx("S",  13, width/2, height-WALL_THICKNESS/2);
-    textx("W",  13, WALL_THICKNESS/2, height/2);
-    textx("E",  13, width-WALL_THICKNESS/2, height/2);
+    textx("N",  1.3, width/2, WALL_THICKNESS/2);
+    textx("S",  1.3, width/2, height-WALL_THICKNESS/2);
+    textx("W",  1.3, WALL_THICKNESS/2, height/2);
+    textx("E",  1.3, width-WALL_THICKNESS/2, height/2);
     
-    textx("NW", 13, width*.1, height*.1);
-    textx("NE", 13, width-width*.1, height*.1);
-    textx("SW", 13, width*.1, height-height*.1);
-    textx("SE", 13, width-width*.1, height-height*.1);
+    textx("NW", 1.3, width*.1, height*.1);
+    textx("NE", 1.3, width-width*.1, height*.1);
+    textx("SW", 1.3, width*.1, height-height*.1);
+    textx("SE", 1.3, width-width*.1, height-height*.1);
     
         // Draw planes
     
@@ -832,7 +832,7 @@ class Game {
     if (over) {
       textAlign(CENTER);
       color(0xFF);
-      textx("GAME OVER", 20, width*.5, height*.4);
+      textx("GAME OVER", 2.0, width*.5, height*.4);
       
       ellipseMode(CENTER);
       strokeWeight(5);
@@ -841,20 +841,20 @@ class Game {
       
       // Display failure explanation
       if (planeThatRanOut != null) {
-        textx("RAN OUT OF FUEL", 20, width*.5, height*.5);
+        textx("RAN OUT OF FUEL", 2.0, width*.5, height*.5);
         ellipse(planeThatRanOut.r.x, planeThatRanOut.r.y, 100, 100);
       }
       
       else if (crash1 != -1 && crash2 != -1) {
-        textx("MID-AIR COLLISION", 20, width*.5, height*.5);
+        textx("MID-AIR COLLISION", 2.0, width*.5, height*.5);
         ellipse(planes[crash1].r.x, planes[crash1].r.y, 80, 80);
       }
       
       else {
-        textx("YOU WON!", 20, width*.5, height*.5);
+        textx("YOU WON!", 2.0, width*.5, height*.5);
       }
       
-      textx("Press (Esc) to return to menu.", 20, width*.5, height*.6);
+      textx("Press (Esc) to return to menu.", 2.0, width*.5, height*.6);
       
     }
     
