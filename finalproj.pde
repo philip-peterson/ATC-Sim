@@ -4,6 +4,26 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import ddf.minim.* ;
 
+/* Quick shim for processing.JS */
+class Rectangle2D {
+   float x; float y; float width; float height;
+   Rectangle2D(float x, float y, float w, float h) {
+      this.x = x;
+      this.y = y;
+      this.width = w;
+      this.height = h;
+   }
+   boolean contains(float x2, float y2) {
+      if (x2 < x || x2 > x+width) {
+         return false;
+      }
+      if (y2 < y || y2 > y+height) {
+         return false;
+      }
+      return true;
+   }
+}
+
 Minim minim;
 AudioPlayer musicPlayer;
 PImage planeIcon;
@@ -616,7 +636,7 @@ class Game {
       float theta = thetaFromVector(difference);
       
       // From levels 0 to 5, gradually decrease safety margin.
-      float safety = lerp(2.5, 1.8, min(difficulty/5.0, 1.0));
+      float safety = lerp(2.5, 1.8, min(difficulty/3.0, 1.0));
       planes[i] = new Airplane(start.x, start.y, theta, i%8, endRegion, safety);
       if (i > 0) {
         float timeSafety = lerp(1,.5,max(difficulty/6.0, 0));
