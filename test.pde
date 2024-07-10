@@ -1,5 +1,7 @@
 ﻿//vim: sw=3:tabstop=3:sts=3:expandtab
 
+/* Please do not look at this code. It's horrific! */
+
 /* Quick shim for processing.JS */
 class Rectangle2D {
    float x; float y; float width; float height;
@@ -23,7 +25,7 @@ class Rectangle2D {
 PImage planeIcon;
 
 final float MUSIC_LENGTH = 201.5;
-final float FULL_FUEL = 2.5;
+final float FULL_FUEL = 3.5;
 final float WALL_THICKNESS = 40;
 final float DISTANCE_ALARM_DIST = 80;
 final float CRASH_DIST = 25;
@@ -663,7 +665,7 @@ class Game {
   */
   Game(int difficulty) {
     this.diff = diff;
-    int numPlanes = (diff+1)*20;
+    int numPlanes = (diff+1)*10;
     
     planes = new Airplane[numPlanes];
     times = new float[numPlanes];
@@ -682,7 +684,7 @@ class Game {
       float theta = thetaFromVector(difference);
       
       // From levels 0 to 5, gradually decrease safety margin.
-      float safety = lerp(2.5, 1.8, min(difficulty/3.0, 1.0));
+      float safety = lerp(FULL_FUEL, 2, min(difficulty/5.0, 1.0));
       planes[i] = new Airplane(start.x, start.y, theta, i%8, endRegion, safety);
       if (i > 0) {
         float timeSafety = lerp(1,.5,max(difficulty/6.0, 0));
